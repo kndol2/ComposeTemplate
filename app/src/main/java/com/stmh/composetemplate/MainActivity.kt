@@ -28,7 +28,9 @@ import com.stmh.composetemplate.screens.MeasurementScreen
 import com.stmh.composetemplate.screens.MoreScreen
 import com.stmh.composetemplate.screens.RecordsScreen
 import com.stmh.composetemplate.ui.theme.ComposeTemplateTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
