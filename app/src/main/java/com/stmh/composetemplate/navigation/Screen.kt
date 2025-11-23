@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -13,6 +14,18 @@ sealed class Screen(
     val title: String,
     val icon: ImageVector
 ) {
+    data object Splash : Screen(
+        route = "splash",
+        title = "스플래시",
+        icon = Icons.Default.Home
+    )
+
+    data object Login : Screen(
+        route = "login",
+        title = "로그인",
+        icon = Icons.Default.Login
+    )
+
     data object Home : Screen(
         route = "home",
         title = "홈",
