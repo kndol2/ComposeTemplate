@@ -1,74 +1,72 @@
 package com.stmh.composetemplate.data.repository
 
+import com.stmh.composetemplate.data.local.LottoDatabaseHelper
+import com.stmh.composetemplate.data.local.LottoDrawEntity
 import com.stmh.composetemplate.data.model.LotteryDraw
-import com.stmh.composetemplate.data.remote.LotteryApiService
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class LotteryRepositoryImpl @Inject constructor(
-    private val lotteryApiService: LotteryApiService
+    private val databaseHelper: LottoDatabaseHelper
 ) : LotteryRepository {
 
     override suspend fun getLotteryDraw(drawNumber: Int): Result<LotteryDraw> {
-        return try {
-            val draw = lotteryApiService.getLotteryDraw(drawNumber)
-            if (draw.returnValue == "success") {
-                Result.success(draw)
-            } else {
-                Result.failure(Exception("Invalid draw number"))
+        return withContext(Dispatchers.IO) {
+            try {
+                val entity = databaseHelper.getDrawByNumber(drawNumber)
+                if (entity != null) {
+                    Result.success(entity.toLotteryDraw())
+                } else {
+                    Result.failure(Exception("Draw not found"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
     override suspend fun getRecentDraws(count: Int): Result<List<LotteryDraw>> {
-        return try {
-            val latestDrawNumber = getLatestDrawNumber().getOrThrow()
-            val startDrawNumber = maxOf(1, latestDrawNumber - count + 1)
-
-            coroutineScope {
-                val draws = (startDrawNumber..latestDrawNumber).map { drawNumber ->
-                    async {
-                        getLotteryDraw(drawNumber).getOrNull()
-                    }
-                }.awaitAll().filterNotNull()
-
-                Result.success(draws)
+        return withContext(Dispatchers.IO) {
+            try {
+                val entities = databaseHelper.getRecentDraws(count)
+                Result.success(entities.map { it.toLotteryDraw() })
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
     override suspend fun getLatestDrawNumber(): Result<Int> {
-        return try {
-            val currentDraw = lotteryApiService.getLotteryDraw(1)
-            if (currentDraw.returnValue == "success") {
-                var low = 1
-                var high = 2000
-                var latest = 1
-
-                while (low <= high) {
-                    val mid = (low + high) / 2
-                    val draw = lotteryApiService.getLotteryDraw(mid)
-
-                    if (draw.returnValue == "success") {
-                        latest = mid
-                        low = mid + 1
-                    } else {
-                        high = mid - 1
-                    }
+        return withContext(Dispatchers.IO) {
+            try {
+                val latestNumber = databaseHelper.getLatestDrawNumber()
+                if (latestNumber != null) {
+                    Result.success(latestNumber)
+                } else {
+                    Result.failure(Exception("Cannot determine latest draw number"))
                 }
-
-                Result.success(latest)
-            } else {
-                Result.failure(Exception("Cannot determine latest draw number"))
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
+    }
+
+    private fun LottoDrawEntity.toLotteryDraw(): LotteryDraw {
+        return LotteryDraw(
+            drawNumber = this.drawNumber,
+            drawDate = this.drawDate,
+            number1 = this.number1,
+            number2 = this.number2,
+            number3 = this.number3,
+            number4 = this.number4,
+            number5 = this.number5,
+            number6 = this.number6,
+            bonusNumber = this.bonusNumber,
+            firstPrizeAmount = 0L,
+            firstPrizeWinners = 0,
+            totalSalesAmount = 0L,
+            returnValue = "success"
+        )
     }
 }
