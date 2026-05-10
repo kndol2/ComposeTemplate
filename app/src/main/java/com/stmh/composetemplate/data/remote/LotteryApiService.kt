@@ -1,12 +1,14 @@
 package com.stmh.composetemplate.data.remote
 
-import com.stmh.composetemplate.data.model.LotteryDraw
+import com.stmh.composetemplate.data.model.LotteryDrawResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
 interface LotteryApiService {
-    @GET("common.do?method=getLottoNumber")
-    suspend fun getLotteryDraw(
-        @Query("drwNo") drawNumber: Int
-    ): LotteryDraw
+    @GET("lt645/selectPstLt645InfoNew.do")
+    suspend fun getLotteryDraws(
+        @Query("srchDir") srchDir: String,
+        @Query("srchLtEpsd") srchLtEpsd: Int,
+        @Query("_") timestamp: Long
+    ): LotteryDrawResponse
 }

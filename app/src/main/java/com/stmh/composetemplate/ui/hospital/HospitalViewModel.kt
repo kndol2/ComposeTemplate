@@ -12,6 +12,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.random.Random
 
+sealed class SyncState {
+    data object Idle : SyncState()
+    data object Syncing : SyncState()
+    data class Done(val addedCount: Int) : SyncState()
+}
+
 sealed class HospitalUiState {
     data object Loading : HospitalUiState()
     data class Success(
@@ -36,6 +42,33 @@ class HospitalViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<HospitalUiState>(HospitalUiState.Idle)
     val uiState: StateFlow<HospitalUiState> = _uiState.asStateFlow()
+
+    private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
+    val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
+
+    private val _latestRound = MutableStateFlow<Int?>(null)
+    val latestRound: StateFlow<Int?> = _latestRound.asStateFlow()
+
+    private val _latestDraw = MutableStateFlow<LotteryDraw?>(null)
+    val latestDraw: StateFlow<LotteryDraw?> = _latestDraw.asStateFlow()
+
+    init {
+        syncLatestDraws()
+    }
+
+    fun syncLatestDraws() {
+        viewModelScope.launch {
+            _syncState.value = SyncState.Syncing
+            val result = lotteryRepository.syncMissingDraws()
+            _syncState.value = SyncState.Done(result.getOrDefault(0))
+
+            val roundNumber = lotteryRepository.getLatestDrawNumber().getOrNull()
+            _latestRound.value = roundNumber
+            if (roundNumber != null) {
+                _latestDraw.value = lotteryRepository.getLotteryDraw(roundNumber).getOrNull()
+            }
+        }
+    }
 
     fun generateRandomNumbers() {
         val numbers = (1..45).shuffled(Random).take(6).sorted()

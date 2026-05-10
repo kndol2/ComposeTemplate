@@ -60,7 +60,6 @@ sealed class Screen(
 val bottomNavItems = listOf(
     Screen.Home,
     Screen.Hospital,
-    Screen.Measurement,
     Screen.Records,
     Screen.More
 )

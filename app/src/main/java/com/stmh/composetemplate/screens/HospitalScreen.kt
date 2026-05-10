@@ -29,62 +29,120 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.stmh.composetemplate.data.model.LotteryDraw
 import com.stmh.composetemplate.ui.hospital.HospitalUiState
 import com.stmh.composetemplate.ui.hospital.HospitalViewModel
+import com.stmh.composetemplate.ui.hospital.SyncState
 
 @Composable
 fun HospitalScreen(
     viewModel: HospitalViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle()
+    val latestRound by viewModel.latestRound.collectAsStateWithLifecycle()
+    val latestDraw by viewModel.latestDraw.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        when (uiState) {
-            is HospitalUiState.Loading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
+    Column(modifier = Modifier.fillMaxSize()) {
+        SyncStatusBanner(syncState = syncState)
 
-            is HospitalUiState.Error -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "오류 발생",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.error
+        Box(modifier = Modifier.weight(1f)) {
+            when (uiState) {
+                is HospitalUiState.Loading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = (uiState as HospitalUiState.Error).message,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(onClick = { viewModel.generateRandomNumbers() }) {
-                        Text("랜덤 번호 추천")
+                }
+
+                is HospitalUiState.Error -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "오류 발생",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = (uiState as HospitalUiState.Error).message,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(onClick = { viewModel.generateRandomNumbers() }) {
+                            Text("랜덤 번호 추천")
+                        }
                     }
                 }
-            }
 
-            else -> {
-                LotteryContent(
-                    uiState = uiState,
-                    onRandomClick = { viewModel.generateRandomNumbers() },
-                    onAnalyzedClick = { viewModel.generateAnalyzedNumbers(50) }
-                )
+                else -> {
+                    LotteryContent(
+                        uiState = uiState,
+                        latestRound = latestRound,
+                        latestDraw = latestDraw,
+                        onRandomClick = { viewModel.generateRandomNumbers() },
+                        onAnalyzedClick = { viewModel.generateAnalyzedNumbers(50) }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
+fun SyncStatusBanner(syncState: SyncState) {
+    when (syncState) {
+        is SyncState.Syncing -> {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = "최신 회차 확인 중...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+        is SyncState.Done -> {
+            if (syncState.addedCount > 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "최신 ${syncState.addedCount}회차 데이터 추가 완료",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
+        is SyncState.Idle -> Unit
+    }
+}
+
+@Composable
 fun LotteryContent(
     uiState: HospitalUiState,
+    latestRound: Int?,
+    latestDraw: LotteryDraw?,
     onRandomClick: () -> Unit,
     onAnalyzedClick: () -> Unit
 ) {
@@ -109,7 +167,56 @@ fun LotteryContent(
             color = MaterialTheme.colorScheme.primary
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = if (latestRound != null) "최신 회차: 제 ${latestRound}회" else "회차 정보 로딩 중...",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.tertiary
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
+
+        if (latestDraw != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "제 ${latestDraw.drawNumber}회 당첨번호  ${latestDraw.drawDate}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        latestDraw.getWinningNumbers().forEach { number ->
+                            LotteryBall(number = number, size = 40)
+                        }
+                        Text(
+                            text = "+",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        LotteryBall(number = latestDraw.bonusNumber, size = 40, isBonus = true)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "행운의 번호 6개를 추천해드립니다",
@@ -117,7 +224,7 @@ fun LotteryContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         if (numbers.isNotEmpty()) {
             Card(
@@ -190,20 +297,18 @@ fun LotteryContent(
 }
 
 @Composable
-fun LotteryBall(number: Int) {
+fun LotteryBall(number: Int, size: Int = 50, isBonus: Boolean = false) {
+    val color = if (isBonus) Color(0xFF7B1FA2) else getLotteryBallColor(number)
     Box(
         modifier = Modifier
-            .size(50.dp)
-            .background(
-                color = getLotteryBallColor(number),
-                shape = CircleShape
-            ),
+            .size(size.dp)
+            .background(color = color, shape = CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = number.toString(),
             color = Color.White,
-            fontSize = 20.sp,
+            fontSize = (size * 0.38f).sp,
             fontWeight = FontWeight.Bold
         )
     }

@@ -1,5 +1,6 @@
 package com.stmh.composetemplate.data.local
 
+import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
@@ -136,6 +137,25 @@ class LottoDatabaseHelper(private val context: Context) : SQLiteOpenHelper(
         }
 
         return null
+    }
+
+    /**
+     * 회차 데이터를 삽입합니다. 이미 존재하면 무시합니다.
+     */
+    fun insertDraw(entity: LottoDrawEntity): Boolean {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_ROUND, entity.drawNumber)
+            put(COLUMN_DATE, entity.drawDate)
+            put(COLUMN_NUM1, entity.number1)
+            put(COLUMN_NUM2, entity.number2)
+            put(COLUMN_NUM3, entity.number3)
+            put(COLUMN_NUM4, entity.number4)
+            put(COLUMN_NUM5, entity.number5)
+            put(COLUMN_NUM6, entity.number6)
+            put(COLUMN_BONUS, entity.bonusNumber)
+        }
+        return db.insertWithOnConflict(TABLE_LOTTO, null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
 
     /**
